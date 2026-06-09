@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   LineChart,
   Line,
@@ -345,12 +346,13 @@ export default function CreditPage() {
       <header className="bg-navy px-4 pt-10 pb-6">
         <div className="flex items-center justify-between">
           <h1 className="text-white text-xl font-bold">Credit Score</h1>
-          <button
+          <Link
+            href="/notifications"
             aria-label="Notifications"
             className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10"
           >
             <BellIcon />
-          </button>
+          </Link>
         </div>
       </header>
 
@@ -440,6 +442,21 @@ export default function CreditPage() {
 
         {/* Credit Score Simulator */}
         <SimulatorSection currentScore={creditScore} />
+
+        {/* AI Advisor entry point */}
+        <Link href="/assistant">
+          <div className="rounded-2xl px-4 py-4 flex items-center justify-between shadow-sm" style={{ backgroundColor: "#0D3B66" }}>
+            <div>
+              <p className="text-white text-sm font-semibold">Chat with your AI advisor</p>
+              <p className="text-blue-200 text-xs mt-0.5">Ask anything about your credit</p>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+              <svg viewBox="0 0 24 24" width={18} height={18} fill="white">
+                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
+              </svg>
+            </div>
+          </div>
+        </Link>
       </div>
     </div>
   );

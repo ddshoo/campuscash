@@ -92,12 +92,13 @@ export default function BalanceAlertsPage() {
             </Link>
             <h1 className="text-white text-xl font-bold">Balance Alerts</h1>
           </div>
-          <button
+          <Link
+            href="/notifications"
             aria-label="Notifications"
             className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10"
           >
             <BellIcon />
-          </button>
+          </Link>
         </div>
       </header>
 

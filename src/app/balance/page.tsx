@@ -131,21 +131,13 @@ export default function BalancePage() {
       <header className="bg-navy px-4 pt-10 pb-6">
         <div className="flex items-center justify-between">
           <h1 className="text-white text-xl font-bold">Bank Balance</h1>
-          <div className="flex items-center gap-3">
-            {/* Placeholder: add account flow deferred */}
-            <button
-              aria-label="Add account"
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10"
-            >
-              <PlusIcon />
-            </button>
-            <button
-              aria-label="Notifications"
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10"
-            >
-              <BellIcon />
-            </button>
-          </div>
+          <Link
+            href="/notifications"
+            aria-label="Notifications"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10"
+          >
+            <BellIcon />
+          </Link>
         </div>
       </header>
 

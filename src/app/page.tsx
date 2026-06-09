@@ -88,12 +88,13 @@ export default function HomePage() {
               Hello, {profile.name.split(" ")[0]}
             </h1>
           </div>
-          <button
+          <Link
+            href="/notifications"
             aria-label="Notifications"
             className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10"
           >
             <BellIcon />
-          </button>
+          </Link>
         </div>
       </header>
 
@@ -174,6 +175,21 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+
+        {/* AI Assistant entry point */}
+        <Link href="/assistant">
+          <div className="rounded-2xl px-4 py-4 flex items-center justify-between shadow-sm" style={{ backgroundColor: "#0D3B66" }}>
+            <div>
+              <p className="text-white text-sm font-semibold">Ask CampusCash AI</p>
+              <p className="text-blue-200 text-xs mt-0.5">Get answers about your finances</p>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+              <svg viewBox="0 0 24 24" width={18} height={18} fill="white">
+                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
+              </svg>
+            </div>
+          </div>
+        </Link>
       </div>
     </div>
   );
