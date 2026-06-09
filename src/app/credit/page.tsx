@@ -174,6 +174,146 @@ function ArrowDown() {
   );
 }
 
+// ── Credit Simulator ─────────────────────────────────────────────────────────
+
+type SimResult = {
+  hypotheticalScore: number;
+  delta: number;
+  explanation: string;
+};
+
+const SIM_EXAMPLES = [
+  "What if I pay off my credit card?",
+  "What if I open a new account?",
+  "What if I miss a payment?",
+];
+
+function SimulatorSection({ currentScore }: { currentScore: number }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<SimResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSimulate() {
+    if (!query.trim() || loading) return;
+    setLoading(true);
+    setResult(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creditScore: currentScore, userQuery: query }),
+      });
+      if (!res.ok) throw new Error("Simulation failed");
+      const data = (await res.json()) as SimResult;
+      setResult(data);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between"
+      >
+        <div className="text-left">
+          <p className="text-sm font-semibold text-gray-800">Simulate Your Score</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            See how financial actions affect your score
+          </p>
+        </div>
+        <span
+          className="text-xs font-semibold px-3 py-1.5 rounded-full text-white"
+          style={{ backgroundColor: "#F26522" }}
+        >
+          {open ? "Close" : "Try it"}
+        </span>
+      </button>
+
+      {open && (
+        <div className="mt-4 flex flex-col gap-3">
+          {/* Example chips */}
+          <div className="flex flex-wrap gap-2">
+            {SIM_EXAMPLES.map((ex) => (
+              <button
+                key={ex}
+                onClick={() => setQuery(ex)}
+                className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full"
+              >
+                {ex}
+              </button>
+            ))}
+          </div>
+
+          {/* Input */}
+          <div className="flex gap-2">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="What would you like to simulate?"
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent"
+              style={{ "--tw-ring-color": "#0D3B66" } as React.CSSProperties}
+              onKeyDown={(e) => e.key === "Enter" && handleSimulate()}
+            />
+            <button
+              onClick={handleSimulate}
+              disabled={loading || !query.trim()}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
+              style={{ backgroundColor: "#0D3B66" }}
+            >
+              {loading ? "…" : "Simulate"}
+            </button>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <p className="text-xs text-red-500">{error}</p>
+          )}
+
+          {/* Result */}
+          {result && (
+            <div className="bg-gray-50 rounded-xl px-4 py-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
+                    Hypothetical Score
+                  </p>
+                  <p className="text-3xl font-bold text-navy mt-0.5">
+                    {result.hypotheticalScore}
+                  </p>
+                </div>
+                <div
+                  className={`flex flex-col items-end`}
+                >
+                  <span
+                    className={`text-xl font-bold ${
+                      result.delta >= 0 ? "text-green-600" : "text-red-500"
+                    }`}
+                  >
+                    {result.delta >= 0 ? "+" : ""}
+                    {result.delta} pts
+                  </span>
+                  <span className="text-xs text-gray-400">vs current {currentScore}</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600 leading-relaxed">{result.explanation}</p>
+              <p className="text-[10px] text-gray-400 italic border-t border-gray-200 pt-2">
+                This is a simulation — not your real score. Actual results may vary.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 function BellIcon() {
@@ -297,6 +437,9 @@ export default function CreditPage() {
             ))}
           </div>
         </div>
+
+        {/* Credit Score Simulator */}
+        <SimulatorSection currentScore={creditScore} />
       </div>
     </div>
   );
