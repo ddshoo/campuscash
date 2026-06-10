@@ -7,10 +7,6 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
   },
-  esbuild: {
-    jsx: "react-jsx",
-    jsxImportSource: "react",
-  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
