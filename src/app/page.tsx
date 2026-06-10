@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAppStore } from "@/store/useAppStore";
+import { ThresholdBanner } from "@/components/ThresholdBanner";
 import type { Transaction } from "@/types";
 
 function formatCurrency(amount: number) {
@@ -73,7 +74,6 @@ export default function HomePage() {
   const profile = useAppStore((s) => s.profile);
 
   const recent = transactions.slice(0, 5);
-  const isBelowThreshold = balance < threshold;
 
   return (
     <div className="flex flex-col min-h-full">
@@ -131,29 +131,7 @@ export default function HomePage() {
         </div>
 
         {/* Low Balance Warning */}
-        {isBelowThreshold && (
-          <Link href="/balance/alerts">
-            <div className="bg-orange/10 border border-orange rounded-xl px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-orange text-lg">⚠️</span>
-                <div>
-                  <p className="text-orange text-sm font-semibold">
-                    Low Balance Alert
-                  </p>
-                  <p className="text-orange/80 text-xs">
-                    Balance is below your{" "}
-                    {threshold.toLocaleString("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    })}{" "}
-                    threshold
-                  </p>
-                </div>
-              </div>
-              <span className="text-orange text-sm">›</span>
-            </div>
-          </Link>
-        )}
+        <ThresholdBanner balance={balance} threshold={threshold} />
 
         {/* Recent Transactions */}
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
