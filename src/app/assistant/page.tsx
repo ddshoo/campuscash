@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useAppStore } from "@/store/useAppStore";
+import { AgentThoughtStream } from "@/components/AgentThoughtStream";
+import type { AgentTraceData, AppUIMessage } from "@/types";
 
 function SendIcon() {
   return (
@@ -13,18 +15,13 @@ function SendIcon() {
   );
 }
 
-function TypingIndicator() {
-  return (
-    <div className="flex items-center gap-1 px-4 py-3 bg-white rounded-2xl rounded-tl-sm shadow-sm w-16">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-          style={{ animationDelay: `${i * 0.15}s` }}
-        />
-      ))}
-    </div>
-  );
+function traceEvents(message: AppUIMessage): AgentTraceData[] {
+  return message.parts
+    .filter(
+      (p): p is { type: "data-agent-trace"; id?: string; data: AgentTraceData } =>
+        p.type === "data-agent-trace"
+    )
+    .map((p) => p.data);
 }
 
 export default function AssistantPage() {
@@ -32,6 +29,7 @@ export default function AssistantPage() {
   const threshold = useAppStore((s) => s.threshold);
   const transactions = useAppStore((s) => s.transactions);
   const creditScore = useAppStore((s) => s.creditScore);
+  const setRoutingState = useAppStore((s) => s.setRoutingState);
 
   // Ref so the transport body closure always reads the latest store values
   const contextRef = useRef({ balance, threshold, creditScore, transactions });
@@ -47,7 +45,17 @@ export default function AssistantPage() {
     []
   );
 
-  const { messages, sendMessage, status } = useChat({ transport });
+  const { messages, sendMessage, status } = useChat<AppUIMessage>({
+    transport,
+    // Mirror the server pipeline's lifecycle into the Zustand state engine
+    onData: (part) => {
+      if (part.type === "data-agent-trace") {
+        useAppStore.getState().setRoutingState(part.data.stage);
+      }
+    },
+    onFinish: () => setRoutingState("idle"),
+    onError: () => setRoutingState("idle"),
+  });
 
   const [input, setInput] = useState("");
   const isStreaming = status === "streaming" || status === "submitted";
@@ -71,13 +79,15 @@ export default function AssistantPage() {
     "How can I improve my credit score?",
   ];
 
+  const lastMessage = messages[messages.length - 1];
+
   return (
     <div className="flex flex-col min-h-full">
       {/* Header */}
       <header className="bg-navy px-4 pt-10 pb-6">
         <h1 className="text-white text-xl font-bold">Ask CampusCash</h1>
         <p className="text-blue-200 text-xs mt-0.5">
-          AI-powered, grounded in your real data
+          Multi-agent pipeline, grounded in your real data
         </p>
       </header>
 
@@ -107,29 +117,46 @@ export default function AssistantPage() {
             .filter((p): p is { type: "text"; text: string } => p.type === "text")
             .map((p) => p.text)
             .join("");
-          if (!text) return null;
+          const events = m.role === "assistant" ? traceEvents(m) : [];
+          if (!text && events.length === 0) return null;
+          const live = isStreaming && m.id === lastMessage?.id;
+
           return (
             <div
               key={m.id}
-              className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`flex flex-col gap-2 ${
+                m.role === "user" ? "items-end" : "items-start"
+              }`}
             >
-              <div
-                className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                  m.role === "user"
-                    ? "text-white rounded-tr-sm"
-                    : "bg-white text-gray-800 rounded-tl-sm shadow-sm"
-                }`}
-                style={m.role === "user" ? { backgroundColor: "#F26522" } : {}}
-              >
-                {text}
-              </div>
+              {/* Live agent ledger renders above the answer bubble */}
+              {events.length > 0 && (
+                <div className="w-full">
+                  <AgentThoughtStream events={events} live={live} />
+                </div>
+              )}
+              {text && (
+                <div
+                  className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                    m.role === "user"
+                      ? "text-white rounded-tr-sm"
+                      : "bg-white text-gray-800 rounded-tl-sm shadow-sm"
+                  }`}
+                  style={m.role === "user" ? { backgroundColor: "#F26522" } : {}}
+                >
+                  {text}
+                </div>
+              )}
             </div>
           );
         })}
 
-        {isStreaming && (
+        {status === "submitted" && (
           <div className="flex justify-start">
-            <TypingIndicator />
+            <div className="max-w-[80%] px-4 py-3 bg-white rounded-2xl rounded-tl-sm shadow-sm">
+              <span className="text-sm text-gray-400 animate-pulse">
+                Dispatching agent pipeline…
+              </span>
+            </div>
           </div>
         )}
 
