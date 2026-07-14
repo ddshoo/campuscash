@@ -47,6 +47,11 @@ export type UpcomingBill = {
  *  "native" is the rebuilt in-app flow. */
 export type PaymentArchitecture = "legacy" | "native";
 
+/** What the app surfaces about its own internals. "consumer" is exactly what
+ *  a shipped user would see; "engineering" additionally exposes the agent
+ *  pipeline trace and classifier confidence — the interview demo view. */
+export type ViewMode = "consumer" | "engineering";
+
 export type CreditScoreEntry = {
   date: string; // "YYYY-MM"
   score: number;

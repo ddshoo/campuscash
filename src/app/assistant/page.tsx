@@ -15,6 +15,20 @@ function SendIcon() {
   );
 }
 
+/** Minimal inline renderer for the model's `**bold**` emphasis. A markdown
+ *  library would be a new dependency for one token type — not worth it. */
+function renderEmphasis(text: string): React.ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((segment, i) =>
+    segment.startsWith("**") && segment.endsWith("**") ? (
+      <strong key={i} className="font-semibold">
+        {segment.slice(2, -2)}
+      </strong>
+    ) : (
+      segment
+    )
+  );
+}
+
 function traceEvents(message: AppUIMessage): AgentTraceData[] {
   return message.parts
     .filter(
@@ -30,6 +44,9 @@ export default function AssistantPage() {
   const transactions = useAppStore((s) => s.transactions);
   const creditScore = useAppStore((s) => s.creditScore);
   const setRoutingState = useAppStore((s) => s.setRoutingState);
+  // "engineering" exposes the agent trace; "consumer" is the shipped view.
+  // Messages only exist client-side, so gating them can't mismatch SSR.
+  const engineeringView = useAppStore((s) => s.viewMode) === "engineering";
 
   // Ref so the transport body closure always reads the latest store values
   const contextRef = useRef({ balance, threshold, creditScore, transactions });
@@ -87,12 +104,12 @@ export default function AssistantPage() {
       <header className="bg-navy px-4 pt-10 pb-6">
         <h1 className="text-white text-xl font-bold">Ask CampusCash</h1>
         <p className="text-blue-200 text-xs mt-0.5">
-          Multi-agent pipeline, grounded in your real data
+          Grounded in your real account data
         </p>
       </header>
 
       {/* Message list */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-28 flex flex-col gap-3">
+      <div className="flex-1 px-4 py-4 flex flex-col gap-3">
         {messages.length === 0 && (
           <div className="flex flex-col gap-2 mt-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
@@ -128,8 +145,9 @@ export default function AssistantPage() {
                 m.role === "user" ? "items-end" : "items-start"
               }`}
             >
-              {/* Live agent ledger renders above the answer bubble */}
-              {events.length > 0 && (
+              {/* Live agent ledger renders above the answer bubble —
+                  engineering view only; consumers just get the answer */}
+              {engineeringView && events.length > 0 && (
                 <div className="w-full">
                   <AgentThoughtStream events={events} live={live} />
                 </div>
@@ -143,7 +161,7 @@ export default function AssistantPage() {
                   }`}
                   style={m.role === "user" ? { backgroundColor: "#F26522" } : {}}
                 >
-                  {text}
+                  {m.role === "assistant" ? renderEmphasis(text) : text}
                 </div>
               )}
             </div>
@@ -154,7 +172,7 @@ export default function AssistantPage() {
           <div className="flex justify-start">
             <div className="max-w-[80%] px-4 py-3 bg-white rounded-2xl rounded-tl-sm shadow-sm">
               <span className="text-sm text-gray-400 animate-pulse">
-                Dispatching agent pipeline…
+                {engineeringView ? "Dispatching agent pipeline…" : "Thinking…"}
               </span>
             </div>
           </div>
@@ -163,8 +181,10 @@ export default function AssistantPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar — sits above bottom nav */}
-      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[420px] px-4 py-3 bg-app-bg border-t border-gray-200">
+      {/* Input bar — sticky inside the phone column's scroll container (the
+          old fixed+viewport-centered version drifted right once the dev
+          panel docked beside the frame), pinned just above the bottom nav */}
+      <div className="sticky bottom-16 z-10 w-full px-4 py-3 bg-app-bg border-t border-gray-200">
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
           <input
             value={input}

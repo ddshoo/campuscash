@@ -8,6 +8,7 @@ import type {
   UpcomingBill,
   PaymentArchitecture,
   TransactionCategory,
+  ViewMode,
 } from "@/types";
 import {
   SEED_BALANCE,
@@ -33,6 +34,9 @@ type AppState = {
 
   // ── Checkout engine routing (Feature C architecture toggle) ──
   paymentArchitecture: PaymentArchitecture;
+
+  // ── Demo presentation: consumer view vs engineering internals ──
+  viewMode: ViewMode;
 
   // ── Transactions (all 10 — fed verbatim to the model context) ──
   transactions: Transaction[];
@@ -63,6 +67,7 @@ type AppState = {
    *  Clamped to available savings; no-ops on non-positive amounts. */
   transferFromSavings: (amount: number) => void;
   setPaymentArchitecture: (mode: PaymentArchitecture) => void;
+  setViewMode: (mode: ViewMode) => void;
   /** Executes a native in-app payment: debits the funding account, records
    *  the ledger entry, and settles any matching upcoming bill early. */
   applyPayment: (payment: {
@@ -84,6 +89,7 @@ type PersistedState = Pick<
   | "threshold"
   | "upcomingBills"
   | "paymentArchitecture"
+  | "viewMode"
   | "transactions"
   | "creditScore"
   | "creditHistory"
@@ -98,6 +104,7 @@ export const useStore = create<AppState>()(
       threshold: SEED_THRESHOLD,
       upcomingBills: makeSeedBills(),
       paymentArchitecture: "native",
+      viewMode: "engineering",
       transactions: SEED_TRANSACTIONS,
       creditScore: SEED_CREDIT_SCORE,
       creditHistory: SEED_CREDIT_HISTORY,
@@ -156,6 +163,7 @@ export const useStore = create<AppState>()(
         }),
       setPaymentArchitecture: (paymentArchitecture) =>
         set({ paymentArchitecture }),
+      setViewMode: (viewMode) => set({ viewMode }),
       applyPayment: ({ payee, amount, source, category }) =>
         set((state) => {
           const debit = roundCents(amount);
@@ -191,6 +199,7 @@ export const useStore = create<AppState>()(
           threshold: SEED_THRESHOLD,
           upcomingBills: makeSeedBills(),
           paymentArchitecture: "native",
+          viewMode: "engineering",
           transactions: SEED_TRANSACTIONS,
           creditScore: SEED_CREDIT_SCORE,
           creditHistory: SEED_CREDIT_HISTORY,
@@ -206,6 +215,7 @@ export const useStore = create<AppState>()(
         threshold: state.threshold,
         upcomingBills: state.upcomingBills,
         paymentArchitecture: state.paymentArchitecture,
+        viewMode: state.viewMode,
         transactions: state.transactions,
         creditScore: state.creditScore,
         creditHistory: state.creditHistory,

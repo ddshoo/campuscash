@@ -34,10 +34,10 @@ function formatTimestamp(ts: number) {
 function LogLine({ entry }: { entry: DevLogEntry }) {
   const style = LEVEL_STYLES[entry.level];
   return (
-    <div className="px-3 py-1 font-mono text-[11px] leading-relaxed animate-[log-line-in_0.25s_ease-out] hover:bg-white/[0.03]">
+    <div className="px-3 py-1 font-mono text-xs leading-relaxed animate-[log-line-in_0.25s_ease-out] hover:bg-white/[0.03]">
       <span className="text-slate-600">{formatTimestamp(entry.ts)}</span>{" "}
       <span
-        className={`inline-block w-[64px] text-center border rounded px-1 text-[9px] font-semibold tracking-wide align-[1px] ${style.badge}`}
+        className={`inline-block w-[68px] text-center border rounded px-1 text-[10px] font-semibold tracking-wide align-[1px] ${style.badge}`}
       >
         {style.label}
       </span>{" "}
@@ -75,11 +75,11 @@ export default function SystemLog() {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex items-center justify-between px-1 pb-2">
-        <h3 className="text-[10px] font-semibold tracking-[0.14em] text-slate-500 uppercase">
+        <h3 className="text-[11px] font-semibold tracking-[0.14em] text-slate-500 uppercase">
           System Log
         </h3>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-slate-600">
+          <span className="font-mono text-[11px] text-slate-600">
             {entries.length} events
           </span>
           <button
@@ -100,7 +100,7 @@ export default function SystemLog() {
         {entries.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-600">
             <TerminalSquare size={20} />
-            <p className="font-mono text-[11px]">
+            <p className="font-mono text-xs">
               log stream idle — run a scenario trigger
             </p>
           </div>

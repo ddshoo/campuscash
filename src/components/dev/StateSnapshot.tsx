@@ -12,10 +12,10 @@ function formatMoney(value: number) {
 function SnapshotCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1.5">
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
         {label}
       </p>
-      <p className="mt-0.5 truncate font-mono text-[11px] text-slate-200">
+      <p className="mt-0.5 truncate font-mono text-xs text-slate-200">
         {value}
       </p>
     </div>
@@ -39,6 +39,7 @@ export default function StateSnapshot() {
   const transactionCount = useAppStore((s) => s.transactions.length);
   const billCount = useAppStore((s) => s.upcomingBills.length);
   const paymentArchitecture = useAppStore((s) => s.paymentArchitecture);
+  const viewMode = useAppStore((s) => s.viewMode);
   const resetDemo = useAppStore((s) => s.resetDemo);
   const activeScenario = useDevLog((s) => s.activeScenario);
   const log = useDevLog((s) => s.log);
@@ -56,7 +57,7 @@ export default function StateSnapshot() {
 
   return (
     <div>
-      <h3 className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+      <h3 className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
         Store Snapshot
       </h3>
       <div className="grid grid-cols-3 gap-1.5">
@@ -72,6 +73,7 @@ export default function StateSnapshot() {
         />
         <SnapshotCell label="Bills" value={show(String(billCount))} />
         <SnapshotCell label="Checkout" value={show(paymentArchitecture)} />
+        <SnapshotCell label="View" value={show(viewMode)} />
         <SnapshotCell
           label="Scenario"
           value={show(activeScenario ?? "none")}

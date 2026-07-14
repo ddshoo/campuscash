@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { useDevLog } from "@/store/useDevLog";
 import { useHydrated } from "@/lib/useHydrated";
 import type { PaymentArchitecture } from "@/types";
+import { RationaleNote } from "./TriggerCard";
 
 const MODE_META: Record<
   PaymentArchitecture,
@@ -59,14 +60,14 @@ export default function ArchitectureToggle() {
         </div>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <h4 className="text-xs font-semibold text-slate-100">
+            <h4 className="text-sm font-semibold text-slate-100">
               Toggle Architecture: Checkout Engine
             </h4>
-            <span className="rounded border border-sky-500/30 bg-sky-500/10 px-1.5 py-px font-mono text-[9px] text-sky-300">
+            <span className="rounded border border-sky-500/30 bg-sky-500/10 px-1.5 py-px font-mono text-[10px] text-sky-300">
               P3 · banner friction
             </span>
           </div>
-          <p className="mt-1 text-[11px] leading-snug text-slate-400">
+          <p className="mt-1 text-xs leading-snug text-slate-400">
             Structurally swaps the Balance page&apos;s payment surface between
             the drop-off-prone external redirect and the rebuilt in-app flow.
           </p>
@@ -86,7 +87,7 @@ export default function ArchitectureToggle() {
               role="radio"
               aria-checked={active}
               onClick={() => handleSwitch(mode)}
-              className={`rounded py-1.5 font-mono text-[10px] font-semibold transition-colors ${
+              className={`rounded py-1.5 font-mono text-[11px] font-semibold transition-colors ${
                 active
                   ? mode === "native"
                     ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
@@ -99,6 +100,14 @@ export default function ArchitectureToggle() {
           );
         })}
       </div>
+
+      <RationaleNote
+        items={[
+          "The whole checkout engine keys off one store field — swapping architectures is a data change, not a code fork or deploy.",
+          "Legacy kept in-tree on purpose: the before/after IS the research finding (≈38% funnel exit at the external handoff).",
+          "Native flow keeps the user in-context: amount → source → review → confirm, with the ledger and balance reconciling in the same store.",
+        ]}
+      />
     </div>
   );
 }

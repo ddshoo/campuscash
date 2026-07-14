@@ -3,6 +3,7 @@
 import { CalendarClock, DatabaseZap } from "lucide-react";
 import TriggerCard from "./TriggerCard";
 import ArchitectureToggle from "./ArchitectureToggle";
+import ViewModeToggle from "./ViewModeToggle";
 import { useDevLog } from "@/store/useDevLog";
 import { runRawDumpScenario } from "@/lib/demo/scenarios/rawDump";
 import { runShortfallScenario } from "@/lib/demo/scenarios/shortfall";
@@ -12,10 +13,11 @@ export default function ScenarioTriggers() {
 
   return (
     <section className="shrink-0">
-      <h3 className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+      <h3 className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
         Scenario Triggers
       </h3>
       <div className="flex flex-col gap-2">
+        <ViewModeToggle />
         <TriggerCard
           icon={DatabaseZap}
           title="Simulate Raw Transaction Dump"
@@ -26,6 +28,11 @@ export default function ScenarioTriggers() {
           onRun={runRawDumpScenario}
           running={activeScenario === "raw-dump"}
           disabled={activeScenario !== null && activeScenario !== "raw-dump"}
+          rationale={[
+            "Rule-based classifier, not an LLM call: deterministic, auditable, zero latency/cost per transaction — the right tool for regular descriptor formats.",
+            "Unknown merchants route to a low-confidence review queue instead of guessing; an LLM would be the escalation path for exactly that queue.",
+            "Research tie-in: category filters were \"dead\" because data arrived unclassified — the pipeline is what makes filters mean something.",
+          ]}
         />
         <TriggerCard
           icon={CalendarClock}
@@ -37,6 +44,11 @@ export default function ScenarioTriggers() {
           onRun={runShortfallScenario}
           running={activeScenario === "shortfall"}
           disabled={activeScenario !== null && activeScenario !== "shortfall"}
+          rationale={[
+            "Risk is DERIVED — a pure function of (bill, balance, clock). No stored alert flag to desync, the same bug class as the original threshold-sync issue.",
+            "Move Funds and Snooze never touch an alert: they change the balance or the due date, and the condition re-derives to false.",
+            "Alternative rejected: persisting an at-risk flag per bill — every resolution path would need cleanup bookkeeping.",
+          ]}
         />
         <ArchitectureToggle />
       </div>

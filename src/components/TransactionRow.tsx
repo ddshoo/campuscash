@@ -3,11 +3,16 @@
 import { AlertTriangle } from "lucide-react";
 import type { Transaction } from "@/types";
 import { formatCurrency, formatDate, CATEGORY_LABELS } from "@/lib/format";
+import { useAppStore } from "@/store/useAppStore";
 
 /** The category chip cycles through the ingestion lifecycle:
  *  raw → amber warning · processing → shimmer skeleton · categorized → label
  *  + confidence. Seed transactions (no status) render the plain label. */
 function CategoryChip({ txn }: { txn: Transaction }) {
+  // Classifier confidence is an internal signal — only the engineering
+  // demo view surfaces it; a shipped consumer app would not.
+  const engineeringView = useAppStore((s) => s.viewMode) === "engineering";
+
   if (txn.status === "raw") {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full animate-[fade-slide-in_0.3s_ease-out]">
@@ -38,7 +43,7 @@ function CategoryChip({ txn }: { txn: Transaction }) {
       >
         {needsReview ? "Needs review" : CATEGORY_LABELS[txn.category]}
       </span>
-      {machineCategorized && txn.confidence !== undefined && (
+      {engineeringView && machineCategorized && txn.confidence !== undefined && (
         <span
           className={`text-[10px] font-medium animate-[fade-slide-in_0.4s_ease-out] ${
             needsReview ? "text-amber-600" : "text-emerald-600"
