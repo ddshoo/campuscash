@@ -72,8 +72,10 @@ const NAV_ITEMS: NavItem[] = [
 export default function BottomNav() {
   const pathname = usePathname();
 
+  // sticky (not fixed): pins to the bottom of the phone column's own scroll
+  // container, so it stays aligned when the dev panel docks beside it
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] bg-white border-t border-gray-200 flex">
+    <nav className="sticky bottom-0 w-full bg-white border-t border-gray-200 flex">
       {NAV_ITEMS.map(({ label, href, match }) => {
         const active = match(pathname);
         const color = active ? "#F26522" : "#0D3B66";
