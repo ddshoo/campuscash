@@ -3,67 +3,14 @@
 import Link from "next/link";
 import { useAppStore } from "@/store/useAppStore";
 import { ThresholdBanner } from "@/components/ThresholdBanner";
-import type { Transaction } from "@/types";
-
-function formatCurrency(amount: number) {
-  return Math.abs(amount).toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
-}
-
-function formatDate(iso: string) {
-  const [year, month, day] = iso.split("-").map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  food: "Food",
-  transport: "Transport",
-  entertainment: "Entertainment",
-  shopping: "Shopping",
-  income: "Income",
-  rent: "Rent",
-  utilities: "Utilities",
-  tuition: "Tuition",
-  other: "Other",
-};
+import TransactionRow from "@/components/TransactionRow";
+import UpcomingBills from "@/components/UpcomingBills";
 
 function BellIcon() {
   return (
     <svg viewBox="0 0 24 24" width={22} height={22} fill="white">
       <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
     </svg>
-  );
-}
-
-function TransactionRow({ txn }: { txn: Transaction }) {
-  const isCredit = txn.amount > 0;
-  return (
-    <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-      <div className="flex flex-col gap-0.5 min-w-0">
-        <span className="text-sm font-medium text-gray-800 truncate">
-          {txn.description}
-        </span>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-            {CATEGORY_LABELS[txn.category] ?? txn.category}
-          </span>
-          <span className="text-[11px] text-gray-400">{formatDate(txn.date)}</span>
-        </div>
-      </div>
-      <span
-        className={`text-sm font-semibold ml-3 shrink-0 ${
-          isCredit ? "text-green-600" : "text-red-500"
-        }`}
-      >
-        {isCredit ? "+" : "-"}
-        {formatCurrency(txn.amount)}
-      </span>
-    </div>
   );
 }
 
@@ -132,6 +79,9 @@ export default function HomePage() {
 
         {/* Low Balance Warning */}
         <ThresholdBanner balance={balance} threshold={threshold} />
+
+        {/* Predictive bill timeline (shortfall alerts surface here) */}
+        <UpcomingBills />
 
         {/* Recent Transactions */}
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">

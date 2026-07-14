@@ -2,56 +2,15 @@
 
 import Link from "next/link";
 import { useAppStore } from "@/store/useAppStore";
-import type { Transaction } from "@/types";
+import TransactionRow from "@/components/TransactionRow";
+import PaymentSection from "@/components/payment/PaymentSection";
 
-function formatCurrency(amount: number) {
-  return Math.abs(amount).toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
-}
-
-function formatDate(iso: string) {
-  const [year, month, day] = iso.split("-").map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  food: "Food",
-  transport: "Transport",
-  entertainment: "Entertainment",
-  shopping: "Shopping",
-  income: "Income",
-  rent: "Rent",
-  utilities: "Utilities",
-  tuition: "Tuition",
-  other: "Other",
-};
-
-// Hardcoded second card — demo placeholder, not in the store
-const PNC_CARD = {
-  accountName: "PNC Savings",
-  accountLast4: "9421",
-  balance: 2050.13,
-  type: "Savings",
-  color: "#F26522",
-};
+import { SEED_SAVINGS_ACCOUNT } from "@/data/seed";
 
 function BellIcon() {
   return (
     <svg viewBox="0 0 24 24" width={22} height={22} fill="white">
       <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width={22} height={22} fill="white">
-      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
     </svg>
   );
 }
@@ -91,35 +50,9 @@ function BankCard({ accountName, accountLast4, balance, type, color }: CardProps
   );
 }
 
-function TransactionRow({ txn }: { txn: Transaction }) {
-  const isCredit = txn.amount > 0;
-  return (
-    <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-      <div className="flex flex-col gap-0.5 min-w-0">
-        <span className="text-sm font-medium text-gray-800 truncate">
-          {txn.description}
-        </span>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-            {CATEGORY_LABELS[txn.category] ?? txn.category}
-          </span>
-          <span className="text-[11px] text-gray-400">{formatDate(txn.date)}</span>
-        </div>
-      </div>
-      <span
-        className={`text-sm font-semibold ml-3 shrink-0 ${
-          isCredit ? "text-green-600" : "text-red-500"
-        }`}
-      >
-        {isCredit ? "+" : "-"}
-        {formatCurrency(txn.amount)}
-      </span>
-    </div>
-  );
-}
-
 export default function BalancePage() {
   const balance = useAppStore((s) => s.balance);
+  const savingsBalance = useAppStore((s) => s.savingsBalance);
   const transactions = useAppStore((s) => s.transactions);
   const profile = useAppStore((s) => s.profile);
 
@@ -152,11 +85,11 @@ export default function BalancePage() {
             color="#5E8AC7"
           />
           <BankCard
-            accountName={PNC_CARD.accountName}
-            accountLast4={PNC_CARD.accountLast4}
-            balance={PNC_CARD.balance}
-            type={PNC_CARD.type}
-            color={PNC_CARD.color}
+            accountName={SEED_SAVINGS_ACCOUNT.accountName}
+            accountLast4={SEED_SAVINGS_ACCOUNT.accountLast4}
+            balance={savingsBalance}
+            type="Savings"
+            color="#F26522"
           />
         </div>
 
@@ -176,6 +109,9 @@ export default function BalancePage() {
             History
           </Link>
         </div>
+
+        {/* Checkout surface — engine chosen by the architecture toggle */}
+        <PaymentSection />
 
         {/* Recent Transactions */}
         <div className="bg-white rounded-2xl shadow-sm mx-4 px-4 py-4">
