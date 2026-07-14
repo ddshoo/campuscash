@@ -4,6 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import type { Transaction } from "@/types";
 import { formatCurrency, formatDate, CATEGORY_LABELS } from "@/lib/format";
 import { useAppStore } from "@/store/useAppStore";
+import { useDevLog } from "@/store/useDevLog";
 
 /** The category chip cycles through the ingestion lifecycle:
  *  raw → amber warning · processing → shimmer skeleton · categorized → label
@@ -12,6 +13,8 @@ function CategoryChip({ txn }: { txn: Transaction }) {
   // Classifier confidence is an internal signal — only the engineering
   // demo view surfaces it; a shipped consumer app would not.
   const engineeringView = useAppStore((s) => s.viewMode) === "engineering";
+  // Mount animations only while the pipeline is running (see TransactionRow).
+  const scenarioLive = useDevLog((s) => s.activeScenario !== null);
 
   if (txn.status === "raw") {
     return (
@@ -39,15 +42,15 @@ function CategoryChip({ txn }: { txn: Transaction }) {
           needsReview
             ? "bg-amber-50 text-amber-700 border border-amber-200"
             : "bg-gray-100 text-gray-500"
-        } ${machineCategorized ? "animate-[fade-slide-in_0.3s_ease-out]" : ""}`}
+        } ${machineCategorized && scenarioLive ? "animate-[fade-slide-in_0.3s_ease-out]" : ""}`}
       >
         {needsReview ? "Needs review" : CATEGORY_LABELS[txn.category]}
       </span>
       {engineeringView && machineCategorized && txn.confidence !== undefined && (
         <span
-          className={`text-[10px] font-medium animate-[fade-slide-in_0.4s_ease-out] ${
-            needsReview ? "text-amber-600" : "text-emerald-600"
-          }`}
+          className={`text-[10px] font-medium ${
+            scenarioLive ? "animate-[fade-slide-in_0.4s_ease-out]" : ""
+          } ${needsReview ? "text-amber-600" : "text-emerald-600"}`}
         >
           {Math.round(txn.confidence * 100)}% match
         </span>
@@ -59,11 +62,15 @@ function CategoryChip({ txn }: { txn: Transaction }) {
 export default function TransactionRow({ txn }: { txn: Transaction }) {
   const isCredit = txn.amount > 0;
   const isPending = txn.status === "raw" || txn.status === "processing";
+  // `status` persists to localStorage, but the flash should mark *freshly
+  // injected* rows only — gate it on the transient scenario flag so rows
+  // don't re-flash on every page mount after the pipeline has finished.
+  const scenarioLive = useDevLog((s) => s.activeScenario !== null);
 
   return (
     <div
       className={`flex items-center justify-between py-3 border-b border-gray-100 last:border-0 ${
-        txn.status ? "animate-[row-flash_1.6s_ease-out]" : ""
+        txn.status && scenarioLive ? "animate-[row-flash_1.6s_ease-out]" : ""
       }`}
     >
       <div className="flex flex-col gap-0.5 min-w-0">

@@ -73,7 +73,7 @@ export default function SystemLog() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-[220px]">
       <div className="flex items-center justify-between px-1 pb-2">
         <h3 className="text-[11px] font-semibold tracking-[0.14em] text-slate-500 uppercase">
           System Log
