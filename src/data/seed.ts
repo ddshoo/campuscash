@@ -1,7 +1,51 @@
-import type { Transaction, CreditScoreEntry, UserProfile } from "@/types";
+import type {
+  Transaction,
+  CreditScoreEntry,
+  UserProfile,
+  UpcomingBill,
+} from "@/types";
 
 export const SEED_BALANCE = 1247.53;
 export const SEED_THRESHOLD = 200;
+export const SEED_SAVINGS_BALANCE = 2050.13;
+
+export const SEED_SAVINGS_ACCOUNT = {
+  accountName: "PNC Savings",
+  accountLast4: "9421",
+};
+
+/** Built as a function (not a constant) so due dates track the real clock —
+ *  a demo run always shows bills landing in the coming two weeks. */
+export function makeSeedBills(): UpcomingBill[] {
+  const inDays = (days: number) =>
+    new Date(Date.now() + days * 86_400_000).toISOString();
+  return [
+    {
+      id: "bill_phone",
+      name: "Mint Mobile",
+      amount: 45.0,
+      dueDate: inDays(6),
+      autopay: true,
+      fundingSource: "Citibank Checking ••3003",
+    },
+    {
+      id: "bill_spotify",
+      name: "Spotify Student",
+      amount: 5.99,
+      dueDate: inDays(10),
+      autopay: true,
+      fundingSource: "Citibank Checking ••3003",
+    },
+    {
+      id: "bill_rent",
+      name: "Rent — 423 S State St",
+      amount: 750.0,
+      dueDate: inDays(13),
+      autopay: false,
+      fundingSource: "Citibank Checking ••3003",
+    },
+  ];
+}
 
 export const SEED_PROFILE: UserProfile = {
   name: "Alex Johnson",
