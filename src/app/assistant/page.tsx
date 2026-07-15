@@ -29,6 +29,27 @@ function renderEmphasis(text: string): React.ReactNode[] {
   );
 }
 
+/** iMessage-style "typing" indicator: three dots lifting in sequence.
+ *  Shown while the server pipeline runs (draft → critic → correction) — in
+ *  consumer view the agent trace is hidden, so this is the only feedback. */
+function TypingDots() {
+  return (
+    <span
+      className="flex items-center gap-1 py-1"
+      role="status"
+      aria-label="Assistant is typing"
+    >
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="h-2 w-2 rounded-full bg-gray-400 animate-[typing-dot_1.2s_ease-in-out_infinite]"
+          style={{ animationDelay: `${i * 0.18}s` }}
+        />
+      ))}
+    </span>
+  );
+}
+
 function traceEvents(message: AppUIMessage): AgentTraceData[] {
   return message.parts
     .filter(
@@ -97,6 +118,19 @@ export default function AssistantPage() {
   ];
 
   const lastMessage = messages[messages.length - 1];
+
+  // The server streams agent-trace parts immediately (flipping status to
+  // "streaming"), but withholds the answer text until the critic loop clears.
+  // Keep the loader up for that whole window — until real text lands — rather
+  // than only during "submitted", so consumer view isn't left staring at a gap.
+  const lastAssistantText =
+    lastMessage?.role === "assistant"
+      ? lastMessage.parts
+          .filter((p): p is { type: "text"; text: string } => p.type === "text")
+          .map((p) => p.text)
+          .join("")
+      : "";
+  const awaitingResponse = isStreaming && !lastAssistantText;
 
   return (
     <div className="flex flex-col min-h-full">
@@ -168,12 +202,16 @@ export default function AssistantPage() {
           );
         })}
 
-        {status === "submitted" && (
+        {awaitingResponse && (
           <div className="flex justify-start">
             <div className="max-w-[80%] px-4 py-3 bg-white rounded-2xl rounded-tl-sm shadow-sm">
-              <span className="text-sm text-gray-400 animate-pulse">
-                {engineeringView ? "Dispatching agent pipeline…" : "Thinking…"}
-              </span>
+              {engineeringView ? (
+                <span className="text-sm text-gray-400 animate-pulse">
+                  Dispatching agent pipeline…
+                </span>
+              ) : (
+                <TypingDots />
+              )}
             </div>
           </div>
         )}

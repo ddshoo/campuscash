@@ -80,6 +80,20 @@ body {
   }
 }
 
+/* Chat "assistant is typing" indicator — three dots lift in sequence */
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
