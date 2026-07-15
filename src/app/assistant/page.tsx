@@ -60,25 +60,25 @@ function traceEvents(message: AppUIMessage): AgentTraceData[] {
 }
 
 export default function AssistantPage() {
-  const balance = useAppStore((s) => s.balance);
-  const threshold = useAppStore((s) => s.threshold);
-  const transactions = useAppStore((s) => s.transactions);
-  const creditScore = useAppStore((s) => s.creditScore);
   const setRoutingState = useAppStore((s) => s.setRoutingState);
   // "engineering" exposes the agent trace; "consumer" is the shipped view.
   // Messages only exist client-side, so gating them can't mismatch SSR.
   const engineeringView = useAppStore((s) => s.viewMode) === "engineering";
 
-  // Ref so the transport body closure always reads the latest store values
-  const contextRef = useRef({ balance, threshold, creditScore, transactions });
-  contextRef.current = { balance, threshold, creditScore, transactions };
-
-  // Transport created once — body is a function so it captures contextRef.current at request time
+  // Transport created once — body is a function so each request snapshots the
+  // store at send time. getState() reads outside React (no subscription, no
+  // ref), so the page doesn't re-render when context values change.
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: () => ({ financialContext: contextRef.current }),
+        body: () => {
+          const { balance, threshold, creditScore, transactions } =
+            useAppStore.getState();
+          return {
+            financialContext: { balance, threshold, creditScore, transactions },
+          };
+        },
       }),
     []
   );
