@@ -1,0 +1,37 @@
+# CI quality gate — runs on every push and PR.
+#
+# Deliberately does NOT build or deploy: Vercel's Git integration already
+# builds (`next build`, which includes type-checking) and deploys on push.
+# This workflow covers what that deploy pipeline doesn't check — lint rules
+# and the unit test suite — plus a fast standalone typecheck for a clearer
+# failure signal than a full build.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` = clean, reproducible install pinned to package-lock.json
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
