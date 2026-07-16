@@ -1,11 +1,49 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useChat } from "@ai-sdk/react";
+import { useState, useEffect, useRef } from "react";
+import { Chat, useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useAppStore } from "@/store/useAppStore";
 import { AgentThoughtStream } from "@/components/AgentThoughtStream";
 import type { AgentTraceData, AppUIMessage } from "@/types";
+
+/**
+ * Module-level chat session. useChat's default state lives inside the
+ * component, so navigating to another tab unmounted the page and erased the
+ * conversation. Hoisting the Chat instance to module scope keeps messages
+ * alive for the whole browser session — you can check a transaction on
+ * another tab and come back to the answer. Created lazily (not at import
+ * time) so nothing runs during SSR module evaluation.
+ */
+let chatSession: Chat<AppUIMessage> | null = null;
+
+function getChatSession(): Chat<AppUIMessage> {
+  if (!chatSession) {
+    chatSession = new Chat<AppUIMessage>({
+      transport: new DefaultChatTransport({
+        api: "/api/chat",
+        // body is a function so each request snapshots the store at send
+        // time. getState() reads outside React — no subscription needed.
+        body: () => {
+          const { balance, threshold, creditScore, transactions } =
+            useAppStore.getState();
+          return {
+            financialContext: { balance, threshold, creditScore, transactions },
+          };
+        },
+      }),
+      // Mirror the server pipeline's lifecycle into the Zustand state engine
+      onData: (part) => {
+        if (part.type === "data-agent-trace") {
+          useAppStore.getState().setRoutingState(part.data.stage);
+        }
+      },
+      onFinish: () => useAppStore.getState().setRoutingState("idle"),
+      onError: () => useAppStore.getState().setRoutingState("idle"),
+    });
+  }
+  return chatSession;
+}
 
 function SendIcon() {
   return (
@@ -60,39 +98,12 @@ function traceEvents(message: AppUIMessage): AgentTraceData[] {
 }
 
 export default function AssistantPage() {
-  const setRoutingState = useAppStore((s) => s.setRoutingState);
   // "engineering" exposes the agent trace; "consumer" is the shipped view.
   // Messages only exist client-side, so gating them can't mismatch SSR.
   const engineeringView = useAppStore((s) => s.viewMode) === "engineering";
 
-  // Transport created once — body is a function so each request snapshots the
-  // store at send time. getState() reads outside React (no subscription, no
-  // ref), so the page doesn't re-render when context values change.
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/chat",
-        body: () => {
-          const { balance, threshold, creditScore, transactions } =
-            useAppStore.getState();
-          return {
-            financialContext: { balance, threshold, creditScore, transactions },
-          };
-        },
-      }),
-    []
-  );
-
   const { messages, sendMessage, status } = useChat<AppUIMessage>({
-    transport,
-    // Mirror the server pipeline's lifecycle into the Zustand state engine
-    onData: (part) => {
-      if (part.type === "data-agent-trace") {
-        useAppStore.getState().setRoutingState(part.data.stage);
-      }
-    },
-    onFinish: () => setRoutingState("idle"),
-    onError: () => setRoutingState("idle"),
+    chat: getChatSession(),
   });
 
   const [input, setInput] = useState("");
@@ -103,7 +114,7 @@ export default function AssistantPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const text = input.trim();
     if (!text || isStreaming) return;
