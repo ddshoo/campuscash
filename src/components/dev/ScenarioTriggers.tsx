@@ -4,6 +4,7 @@ import { CalendarClock, DatabaseZap } from "lucide-react";
 import TriggerCard from "./TriggerCard";
 import ArchitectureToggle from "./ArchitectureToggle";
 import ViewModeToggle from "./ViewModeToggle";
+import ManualOverrides from "./ManualOverrides";
 import { useDevLog } from "@/store/useDevLog";
 import { runRawDumpScenario } from "@/lib/demo/scenarios/rawDump";
 import { runShortfallScenario } from "@/lib/demo/scenarios/shortfall";
@@ -51,6 +52,7 @@ export default function ScenarioTriggers() {
           ]}
         />
         <ArchitectureToggle />
+        <ManualOverrides />
       </div>
     </section>
   );
