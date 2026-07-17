@@ -150,6 +150,71 @@ type CategoryRule = {
   weight: number; // base confidence when this rule fires
 };
 
+// ── Merchant aliases (checked before the generic keyword rules) ──────────────
+
+type MerchantAlias = {
+  /** Matched against the normalized haystack (see normalizeForAliases). */
+  pattern: RegExp;
+  /** Canonical token reported as matchedToken in logs and the review UI. */
+  merchant: string;
+  category: TransactionCategory;
+};
+
+/** Exact-merchant matches outrank every generic keyword rule: knowing WHO
+ *  the merchant is beats inferring from a keyword. */
+const ALIAS_WEIGHT = 0.96;
+
+/**
+ * Folds descriptor punctuation variants onto one canonical token stream so
+ * MCDONALDS, MCDONALD'S, MCDONALD’S #1042 and "SQ *STARBUCKS 1234" all hit
+ * the same alias. Apostrophes/periods/ampersands drop (AT&T → ATT); hyphens
+ * become spaces (T-MOBILE → T MOBILE); whitespace collapses.
+ */
+function normalizeForAliases(value: string): string {
+  return value
+    .toUpperCase()
+    .replace(/[’'.&]/g, "")
+    .replace(/-/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Known-merchant table, first match wins. Deliberately separate from the
+ * generic CATEGORY_RULES so brand coverage can grow without making the
+ * keyword regexes unreadable. Ambiguity notes:
+ *  - UBER EATS (food) is listed before bare UBER (transport) — order is
+ *    load-bearing.
+ *  - Bare ambiguous words ("work", "poker") are intentionally absent; they
+ *    stay in the review queue unless stronger evidence matches a rule.
+ */
+const MERCHANT_ALIAS_RULES: MerchantAlias[] = [
+  // food
+  { pattern: /\bUBER EATS\b/, merchant: "UBER EATS", category: "food" },
+  { pattern: /\bMCDONALDS?\b/, merchant: "MCDONALDS", category: "food" },
+  { pattern: /\bSTARBUCKS\b/, merchant: "STARBUCKS", category: "food" },
+  { pattern: /\bCHIPOTLE\b/, merchant: "CHIPOTLE", category: "food" },
+  { pattern: /\bCHICK ?FIL ?A\b/, merchant: "CHICK-FIL-A", category: "food" },
+  { pattern: /\bTACO BELL\b/, merchant: "TACO BELL", category: "food" },
+  // entertainment
+  { pattern: /\bNETFLIX\b/, merchant: "NETFLIX", category: "entertainment" },
+  { pattern: /\bSPOTIFY\b/, merchant: "SPOTIFY", category: "entertainment" },
+  { pattern: /\bHULU\b/, merchant: "HULU", category: "entertainment" },
+  // transport (bare UBER only fires if UBER EATS didn't)
+  { pattern: /\bUBER\b/, merchant: "UBER", category: "transport" },
+  { pattern: /\bLYFT\b/, merchant: "LYFT", category: "transport" },
+  { pattern: /\bSHELL\b/, merchant: "SHELL", category: "transport" },
+  { pattern: /\bSPEEDWAY\b/, merchant: "SPEEDWAY", category: "transport" },
+  // shopping
+  { pattern: /\bAMAZON\b|\bAMZN\b/, merchant: "AMAZON", category: "shopping" },
+  { pattern: /\bWAL ?MART\b/, merchant: "WALMART", category: "shopping" },
+  { pattern: /\bTARGET\b/, merchant: "TARGET", category: "shopping" },
+  // utilities (phone/internet carriers)
+  { pattern: /\bVERIZON\b/, merchant: "VERIZON", category: "utilities" },
+  { pattern: /\bATT\b/, merchant: "AT&T", category: "utilities" },
+  { pattern: /\bT ?MOBILE\b/, merchant: "T-MOBILE", category: "utilities" },
+];
+
 /** Ordered by specificity — first match wins. */
 const CATEGORY_RULES: CategoryRule[] = [
   { pattern: /\b(PYRL|PAYROLL|DIRECT DEP|WORK.?STUDY)\b/, category: "income", weight: 0.97 },
@@ -182,6 +247,19 @@ function confidenceJitter(merchant: string): number {
 export function classifyMerchant(merchant: string): ClassifyResult {
   const haystack = merchant.toUpperCase();
 
+  // Pass 1: exact-merchant aliases on the punctuation-normalized text.
+  const normalized = normalizeForAliases(merchant);
+  for (const alias of MERCHANT_ALIAS_RULES) {
+    if (alias.pattern.test(normalized)) {
+      const confidence = Math.min(
+        0.99,
+        ALIAS_WEIGHT - confidenceJitter(merchant)
+      );
+      return { category: alias.category, confidence, matchedToken: alias.merchant };
+    }
+  }
+
+  // Pass 2: generic keyword rules.
   for (const rule of CATEGORY_RULES) {
     const match = haystack.match(rule.pattern);
     if (match) {

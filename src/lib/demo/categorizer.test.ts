@@ -87,6 +87,83 @@ describe("classifyMerchant — rule matching", () => {
   });
 });
 
+describe("classifyMerchant — merchant alias table", () => {
+  const ALIAS_EXPECTATIONS: [input: string, category: string, token: string][] = [
+    // food
+    ["McDonalds", "food", "MCDONALDS"],
+    ["Starbucks", "food", "STARBUCKS"],
+    ["Chipotle", "food", "CHIPOTLE"],
+    ["Chick-fil-A", "food", "CHICK-FIL-A"],
+    ["Taco Bell", "food", "TACO BELL"],
+    // entertainment
+    ["Netflix", "entertainment", "NETFLIX"],
+    ["Spotify", "entertainment", "SPOTIFY"],
+    ["Hulu", "entertainment", "HULU"],
+    // transport
+    ["Uber", "transport", "UBER"],
+    ["Lyft", "transport", "LYFT"],
+    ["Shell", "transport", "SHELL"],
+    ["Speedway", "transport", "SPEEDWAY"],
+    // shopping
+    ["Amazon", "shopping", "AMAZON"],
+    ["Walmart", "shopping", "WALMART"],
+    ["Target", "shopping", "TARGET"],
+    // utilities
+    ["Verizon", "utilities", "VERIZON"],
+    ["AT&T", "utilities", "AT&T"],
+    ["T-Mobile", "utilities", "T-MOBILE"],
+  ];
+
+  it.each(ALIAS_EXPECTATIONS)(
+    "classifies %s as %s via alias token %s",
+    (input, category, token) => {
+      const result = classifyMerchant(input);
+      expect(result.category).toBe(category);
+      expect(result.matchedToken).toBe(token);
+      expect(result.confidence).toBeGreaterThan(0.9);
+    }
+  );
+
+  it("handles possessives, punctuation, store numbers and processor noise", () => {
+    // straight and curly apostrophes, possessive form
+    expect(classifyMerchant("MCDONALD'S").category).toBe("food");
+    expect(classifyMerchant("MCDONALD’S").category).toBe("food");
+    // store number suffix
+    expect(classifyMerchant("MCDONALD'S #1042").category).toBe("food");
+    // raw descriptor with a processor prefix, unparsed
+    expect(classifyMerchant("SQ *STARBUCKS 1234").category).toBe("food");
+    // hyphen/spacing variants
+    expect(classifyMerchant("TMOBILE PAYMENT").category).toBe("utilities");
+    expect(classifyMerchant("T MOBILE").category).toBe("utilities");
+    expect(classifyMerchant("CHICKFILA 00821").category).toBe("food");
+    expect(classifyMerchant("WAL-MART SUPERCENTER").category).toBe("shopping");
+    expect(classifyMerchant("ATT BILL PAYMENT").category).toBe("utilities");
+  });
+
+  it("Uber Eats stays food while bare Uber is transport (order-dependent)", () => {
+    expect(classifyMerchant("UBER EATS").category).toBe("food");
+    expect(classifyMerchant("UBER TRIP HELP.UBER.COM").category).toBe("transport");
+  });
+
+  it("keeps ambiguous terms in the review queue without stronger evidence", () => {
+    for (const ambiguous of ["work", "poker", "Chuck E Cheese"]) {
+      const result = classifyMerchant(ambiguous);
+      expect(result.category).toBe("other");
+      expect(result.matchedToken).toBeNull();
+      expect(result.confidence).toBeLessThan(REVIEW_QUEUE_THRESHOLD);
+    }
+    // "work" WITH stronger evidence still classifies via the generic rules
+    expect(classifyMerchant("UMICH WORK-STUDY PYRL").category).toBe("income");
+  });
+
+  it("alias matches are deterministic across runs", () => {
+    const a = classifyMerchant("MCDONALD'S #1042");
+    const b = classifyMerchant("MCDONALD'S #1042");
+    expect(a.confidence).toBe(b.confidence);
+    expect(a.confidence).toBeLessThanOrEqual(0.99);
+  });
+});
+
 describe("buildRawVendorDump — demo batch integrity", () => {
   it("every payload parses to a non-empty merchant", () => {
     for (const payload of buildRawVendorDump()) {
