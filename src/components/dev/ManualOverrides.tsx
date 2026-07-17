@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useDevLog } from "@/store/useDevLog";
+import { classifyMerchant } from "@/lib/demo/categorizer";
 import type { Transaction, TransactionCategory } from "@/types";
 
 const CATEGORIES: TransactionCategory[] = [
@@ -54,20 +55,43 @@ export default function ManualOverrides() {
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
   const [direction, setDirection] = useState<"debit" | "credit">("debit");
-  const [category, setCategory] = useState<TransactionCategory>("other");
+  // "auto" routes the description through the same rule-based classifier the
+  // ingestion pipeline uses; picking a category is the manual override.
+  const [category, setCategory] = useState<TransactionCategory | "auto">("auto");
 
   function addTransaction() {
     const magnitude = Number(amount);
     if (!desc.trim() || !amount.trim() || Number.isNaN(magnitude) || magnitude <= 0)
       return;
     const signed = direction === "debit" ? -magnitude : magnitude;
+    const description = desc.trim();
+
     const tx: Transaction = {
       id: `txn_manual_${Date.now()}`,
       date: new Date().toISOString().slice(0, 10),
-      description: desc.trim(),
-      category,
+      description,
+      category: "other",
       amount: signed,
     };
+
+    if (category === "auto") {
+      const verdict = classifyMerchant(description);
+      // Mirror the pipeline's contract: machine-categorized entries carry
+      // status + confidence so the engineering view shows the % match.
+      tx.category = verdict.category;
+      tx.status = "categorized";
+      tx.confidence = verdict.confidence;
+      log(
+        verdict.matchedToken ? "success" : "warn",
+        "Categorizer",
+        verdict.matchedToken
+          ? `"${description}" → ${verdict.category} (token "${verdict.matchedToken}", ${Math.round(verdict.confidence * 100)}%)`
+          : `"${description}" → no rule matched · review queue as "other" (${Math.round(verdict.confidence * 100)}%)`
+      );
+    } else {
+      tx.category = category; // hand-picked — trusted, no status/confidence
+    }
+
     // ingestTransactions also reconciles the balance, same as the pipeline
     useAppStore.getState().ingestTransactions([tx]);
     log(
@@ -75,7 +99,7 @@ export default function ManualOverrides() {
       "State Bridge",
       `manual transaction: ${direction === "debit" ? "-" : "+"}$${magnitude.toFixed(
         2
-      )} "${tx.description}" (${category})`
+      )} "${description}" (${tx.category})`
     );
     setDesc("");
     setAmount("");
@@ -165,10 +189,11 @@ export default function ManualOverrides() {
             <select
               value={category}
               onChange={(e) =>
-                setCategory(e.target.value as TransactionCategory)
+                setCategory(e.target.value as TransactionCategory | "auto")
               }
               className={inputClass}
             >
+              <option value="auto">auto (classifier)</option>
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {c}

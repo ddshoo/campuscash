@@ -154,7 +154,7 @@ type CategoryRule = {
 const CATEGORY_RULES: CategoryRule[] = [
   { pattern: /\b(PYRL|PAYROLL|DIRECT DEP|WORK.?STUDY)\b/, category: "income", weight: 0.97 },
   { pattern: /\b(UBER EATS|DOORDASH|GRUBHUB)\b/, category: "food", weight: 0.94 },
-  { pattern: /\b(COFFEE|CAFE|GRILL|PIZZA|DINER|BAKERY|MASALA)\b/, category: "food", weight: 0.91 },
+  { pattern: /\b(COFFEE|CAFE|GRILL|PIZZA|DINER|BAKERY|MASALA|ICE CREAM|BOBA|SUSHI|TACO|BURGER|DONUT)\b/, category: "food", weight: 0.91 },
   { pattern: /\b(UTIL|DTE|ENERGY|WATER|COMCAST|XFINITY)\b/, category: "utilities", weight: 0.88 },
   { pattern: /\b(SPEEDWAY|SHELL|EXXON|MARATHON|AAATA|LYFT|AMTRAK)\b/, category: "transport", weight: 0.9 },
   { pattern: /\b(AMAZON|TARGET|WALMART|MARKETPLACE|MKTP)\b/, category: "shopping", weight: 0.92 },
