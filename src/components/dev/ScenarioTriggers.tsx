@@ -2,7 +2,6 @@
 
 import { CalendarClock, DatabaseZap } from "lucide-react";
 import TriggerCard from "./TriggerCard";
-import ArchitectureToggle from "./ArchitectureToggle";
 import ViewModeToggle from "./ViewModeToggle";
 import ManualOverrides from "./ManualOverrides";
 import { useDevLog } from "@/store/useDevLog";
@@ -51,7 +50,6 @@ export default function ScenarioTriggers() {
             "Alternative rejected: persisting an at-risk flag per bill — every resolution path would need cleanup bookkeeping.",
           ]}
         />
-        <ArchitectureToggle />
         <ManualOverrides />
       </div>
     </section>

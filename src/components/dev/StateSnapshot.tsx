@@ -4,6 +4,7 @@ import { RotateCcw } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useDevLog } from "@/store/useDevLog";
 import { useHydrated } from "@/lib/useHydrated";
+import { resetChatSession } from "@/lib/chatSession";
 
 function formatMoney(value: number) {
   return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -38,7 +39,6 @@ export default function StateSnapshot() {
   const threshold = useAppStore((s) => s.threshold);
   const transactionCount = useAppStore((s) => s.transactions.length);
   const billCount = useAppStore((s) => s.upcomingBills.length);
-  const paymentArchitecture = useAppStore((s) => s.paymentArchitecture);
   const viewMode = useAppStore((s) => s.viewMode);
   const resetDemo = useAppStore((s) => s.resetDemo);
   const activeScenario = useDevLog((s) => s.activeScenario);
@@ -46,10 +46,11 @@ export default function StateSnapshot() {
 
   function handleReset() {
     resetDemo();
+    resetChatSession();
     log(
       "info",
       "Runtime",
-      "Store reset to seed snapshot · localStorage[campuscash] rewritten"
+      "Store reset to seed snapshot · localStorage[campuscash] rewritten · chat history cleared"
     );
   }
 
@@ -72,7 +73,6 @@ export default function StateSnapshot() {
           value={show(String(transactionCount))}
         />
         <SnapshotCell label="Bills" value={show(String(billCount))} />
-        <SnapshotCell label="Checkout" value={show(paymentArchitecture)} />
         <SnapshotCell label="View" value={show(viewMode)} />
         <SnapshotCell
           label="Scenario"
