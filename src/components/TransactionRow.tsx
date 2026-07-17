@@ -3,14 +3,15 @@
 import { AlertTriangle } from "lucide-react";
 import type { Transaction } from "@/types";
 import { formatCurrency, formatDate, CATEGORY_LABELS } from "@/lib/format";
+import { matchLabel } from "@/lib/demo/categorizer";
 import { useAppStore } from "@/store/useAppStore";
 import { useDevLog } from "@/store/useDevLog";
 
 /** The category chip cycles through the ingestion lifecycle:
  *  raw → amber warning · processing → shimmer skeleton · categorized → label
- *  + confidence. Seed transactions (no status) render the plain label. */
+ *  + match explanation. Seed transactions (no status) render the plain label. */
 function CategoryChip({ txn }: { txn: Transaction }) {
-  // Classifier confidence is an internal signal — only the engineering
+  // The classifier's rule trail is an internal signal — only the engineering
   // demo view surfaces it; a shipped consumer app would not.
   const engineeringView = useAppStore((s) => s.viewMode) === "engineering";
   // Mount animations only while the pipeline is running (see TransactionRow).
@@ -32,8 +33,7 @@ function CategoryChip({ txn }: { txn: Transaction }) {
   }
 
   const machineCategorized = txn.status === "categorized";
-  const needsReview =
-    machineCategorized && (txn.confidence ?? 1) < 0.5;
+  const needsReview = machineCategorized && txn.match === "none";
 
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -46,13 +46,15 @@ function CategoryChip({ txn }: { txn: Transaction }) {
       >
         {needsReview ? "Needs review" : CATEGORY_LABELS[txn.category]}
       </span>
-      {engineeringView && machineCategorized && txn.confidence !== undefined && (
+      {/* Explainable rule trail: which tier fired and on what token —
+          honest about being rules, no pseudo-statistical percentages */}
+      {engineeringView && machineCategorized && txn.match && txn.match !== "none" && (
         <span
-          className={`text-[10px] font-medium ${
+          className={`text-[10px] font-medium text-emerald-600 ${
             scenarioLive ? "animate-[fade-slide-in_0.4s_ease-out]" : ""
-          } ${needsReview ? "text-amber-600" : "text-emerald-600"}`}
+          }`}
         >
-          {Math.round(txn.confidence * 100)}% match
+          {matchLabel({ match: txn.match, matchedToken: txn.matchedToken ?? null })}
         </span>
       )}
     </span>

@@ -31,7 +31,7 @@ export default function ScenarioTriggers() {
           disabled={activeScenario !== null && activeScenario !== "raw-dump"}
           rationale={[
             "Rule-based classifier, not an LLM call: deterministic, auditable, zero latency/cost per transaction — the right tool for regular descriptor formats.",
-            "Unknown merchants route to a low-confidence review queue instead of guessing; an LLM would be the escalation path for exactly that queue.",
+            "Unknown merchants route to a review queue instead of guessing; an LLM would be the escalation path for exactly that queue.",
             "Research tie-in: category filters were \"dead\" because data arrived unclassified — the pipeline is what makes filters mean something.",
           ]}
         />

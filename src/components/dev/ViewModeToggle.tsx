@@ -15,7 +15,7 @@ const MODE_META: Record<ViewMode, { label: string; routeName: string }> = {
 /**
  * Presentation switch: what a shipped user sees vs the demo's engineering
  * internals. Consumer mode hides the agent pipeline trace in the assistant
- * and the classifier confidence tags on transactions — same build, one flag.
+ * and the classifier match labels on transactions — same build, one flag.
  */
 export default function ViewModeToggle() {
   const mounted = useHydrated();
@@ -29,7 +29,7 @@ export default function ViewModeToggle() {
     log(
       "info",
       "UI Router",
-      `Surface flipped: ${MODE_META[viewMode].routeName} → ${MODE_META[mode].routeName} · agent trace ${mode === "engineering" ? "exposed" : "hidden"} · confidence tags ${mode === "engineering" ? "on" : "off"}`
+      `Surface flipped: ${MODE_META[viewMode].routeName} → ${MODE_META[mode].routeName} · agent trace ${mode === "engineering" ? "exposed" : "hidden"} · match labels ${mode === "engineering" ? "on" : "off"}`
     );
   }
 
@@ -51,7 +51,7 @@ export default function ViewModeToggle() {
           <p className="mt-1 text-xs leading-snug text-slate-400">
             Consumer is exactly what a student would ship-see. Engineering
             additionally exposes the live agent pipeline in the assistant and
-            classifier confidence on transactions.
+            classifier match labels on transactions.
           </p>
         </div>
       </div>

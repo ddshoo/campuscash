@@ -3,7 +3,7 @@ import {
   parseDescriptor,
   classifyMerchant,
   buildRawVendorDump,
-  REVIEW_QUEUE_THRESHOLD,
+  matchLabel,
 } from "./categorizer";
 
 describe("parseDescriptor — noise stripping", () => {
@@ -50,10 +50,10 @@ describe("parseDescriptor — noise stripping", () => {
 });
 
 describe("classifyMerchant — rule matching", () => {
-  it("maps food merchants with high confidence", () => {
+  it("maps food merchants via a keyword rule", () => {
     const result = classifyMerchant("Student Coffee");
     expect(result.category).toBe("food");
-    expect(result.confidence).toBeGreaterThan(0.8);
+    expect(result.match).toBe("keyword");
     expect(result.matchedToken).toBe("COFFEE");
   });
 
@@ -70,20 +70,32 @@ describe("classifyMerchant — rule matching", () => {
   it("parks unknown merchants in the review queue instead of guessing", () => {
     const result = classifyMerchant("Zeta House Dues");
     expect(result.category).toBe("other");
+    expect(result.match).toBe("none");
     expect(result.matchedToken).toBeNull();
-    expect(result.confidence).toBeLessThan(REVIEW_QUEUE_THRESHOLD);
   });
 
-  it("is deterministic — same input, same confidence, every run", () => {
+  it("is deterministic — same input, same result, every run", () => {
     const a = classifyMerchant("Student Coffee");
     const b = classifyMerchant("Student Coffee");
-    expect(a.confidence).toBe(b.confidence);
+    expect(a).toEqual(b);
+  });
+});
+
+describe("matchLabel — explainable rule labels", () => {
+  it("labels alias hits as exact merchant matches with the token", () => {
+    expect(matchLabel(classifyMerchant("Starbucks"))).toBe(
+      "Exact merchant match: STARBUCKS"
+    );
   });
 
-  it("never exceeds a confidence of 0.99", () => {
-    for (const merchant of ["Payroll Direct Dep", "Netflix", "Tuition Bursar"]) {
-      expect(classifyMerchant(merchant).confidence).toBeLessThanOrEqual(0.99);
-    }
+  it("labels keyword hits with the token that fired", () => {
+    expect(matchLabel(classifyMerchant("Campus Burger Co"))).toBe(
+      "Keyword match: BURGER"
+    );
+  });
+
+  it("labels unmatched merchants as needing review", () => {
+    expect(matchLabel(classifyMerchant("Zeta House Dues"))).toBe("Needs review");
   });
 });
 
@@ -120,7 +132,7 @@ describe("classifyMerchant — merchant alias table", () => {
       const result = classifyMerchant(input);
       expect(result.category).toBe(category);
       expect(result.matchedToken).toBe(token);
-      expect(result.confidence).toBeGreaterThan(0.9);
+      expect(result.match).toBe("alias");
     }
   );
 
@@ -149,8 +161,8 @@ describe("classifyMerchant — merchant alias table", () => {
     for (const ambiguous of ["work", "poker", "Chuck E Cheese"]) {
       const result = classifyMerchant(ambiguous);
       expect(result.category).toBe("other");
+      expect(result.match).toBe("none");
       expect(result.matchedToken).toBeNull();
-      expect(result.confidence).toBeLessThan(REVIEW_QUEUE_THRESHOLD);
     }
     // "work" WITH stronger evidence still classifies via the generic rules
     expect(classifyMerchant("UMICH WORK-STUDY PYRL").category).toBe("income");
@@ -159,8 +171,8 @@ describe("classifyMerchant — merchant alias table", () => {
   it("alias matches are deterministic across runs", () => {
     const a = classifyMerchant("MCDONALD'S #1042");
     const b = classifyMerchant("MCDONALD'S #1042");
-    expect(a.confidence).toBe(b.confidence);
-    expect(a.confidence).toBeLessThanOrEqual(0.99);
+    expect(a).toEqual(b);
+    expect(a.match).toBe("alias");
   });
 });
 
@@ -174,7 +186,7 @@ describe("buildRawVendorDump — demo batch integrity", () => {
   it("exactly one payload lands in the review queue (the demo edge case)", () => {
     const queued = buildRawVendorDump().filter((p) => {
       const { merchant } = parseDescriptor(p.descriptor);
-      return classifyMerchant(merchant).confidence < REVIEW_QUEUE_THRESHOLD;
+      return classifyMerchant(merchant).match === "none";
     });
     expect(queued).toHaveLength(1);
   });

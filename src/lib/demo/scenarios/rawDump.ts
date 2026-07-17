@@ -6,7 +6,7 @@ import {
   buildRawVendorDump,
   parseDescriptor,
   classifyMerchant,
-  REVIEW_QUEUE_THRESHOLD,
+  matchLabel,
 } from "@/lib/demo/categorizer";
 
 /** Monotonic batch counter so repeated demo runs read like a real feed. */
@@ -18,7 +18,7 @@ let batchNumber = 0;
  * Orchestrates the full pipeline against the live store with artificial
  * latency between stages, so the consumer view visibly transitions:
  * raw (uncategorized warning) → processing (shimmer) → categorized (chips +
- * confidence). The dev-log narrates every operation the engine performs.
+ * match labels). The dev-log narrates every operation the engine performs.
  *
  * Runs client-side only (dev-panel trigger); guarded against double-fire.
  */
@@ -64,7 +64,6 @@ export async function runRawDumpScenario(): Promise<void> {
     log("info", "Parser", "Normalization pass started — stripping processor noise");
     await sleep(400);
 
-    let confidenceSum = 0;
     let reviewQueueCount = 0;
 
     for (const txn of rawTransactions) {
@@ -79,38 +78,37 @@ export async function runRawDumpScenario(): Promise<void> {
       );
 
       const result = classifyMerchant(parsed.merchant);
-      confidenceSum += result.confidence;
       await sleep(300);
 
-      if (result.matchedToken && result.confidence >= REVIEW_QUEUE_THRESHOLD) {
+      if (result.match !== "none") {
         log(
           "info",
           "Classifier",
-          `token "${result.matchedToken}" → ${result.category.toUpperCase()} · w=${result.confidence.toFixed(2)}`
+          `${matchLabel(result)} → ${result.category.toUpperCase()}`
         );
       } else {
         reviewQueueCount += 1;
         log(
           "warn",
           "Classifier",
-          `no rule matched "${parsed.merchant}" · w=${result.confidence.toFixed(2)} — routed to review queue as OTHER`
+          `no rule matched "${parsed.merchant}" — routed to review queue as OTHER`
         );
       }
 
       useStore.getState().updateTransaction(txn.id, {
         description: parsed.merchant,
         category: result.category,
-        confidence: result.confidence,
+        match: result.match,
+        matchedToken: result.matchedToken,
         status: "categorized",
       });
     }
 
     await sleep(450);
-    const avgConfidence = confidenceSum / payloads.length;
     log(
       "success",
       "Classifier",
-      `${payloads.length}/${payloads.length} payloads mapped · avg confidence ${avgConfidence.toFixed(2)} · ${reviewQueueCount} flagged for review`
+      `${payloads.length}/${payloads.length} payloads mapped · ${reviewQueueCount} flagged for review`
     );
     await sleep(250);
     log(

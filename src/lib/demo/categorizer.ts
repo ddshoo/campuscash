@@ -1,4 +1,4 @@
-import type { TransactionCategory } from "@/types";
+import type { MatchKind, TransactionCategory } from "@/types";
 
 /**
  * Rule-based transaction categorizer.
@@ -7,8 +7,8 @@ import type { TransactionCategory } from "@/types";
  * must be deterministic for the demo, and the domain (card-processor
  * descriptor formats) is regular enough for string rules. The trade-off we'd
  * name in a deep dive: rules are cheap/predictable but brittle on unseen
- * merchants — that's why unmatched payloads fall to a low-confidence review
- * queue instead of guessing.
+ * merchants — that's why unmatched payloads fall to a review queue instead
+ * of guessing.
  */
 
 export type RawVendorPayload = {
@@ -30,7 +30,8 @@ export type ParseResult = {
 
 export type ClassifyResult = {
   category: TransactionCategory;
-  confidence: number; // 0..1
+  /** Which rule tier decided: exact merchant alias, generic keyword, or none. */
+  match: MatchKind;
   matchedToken: string | null; // which rule token fired (null = review queue)
 };
 
@@ -147,7 +148,6 @@ export function parseDescriptor(descriptor: string): ParseResult {
 type CategoryRule = {
   pattern: RegExp;
   category: TransactionCategory;
-  weight: number; // base confidence when this rule fires
 };
 
 // ── Merchant aliases (checked before the generic keyword rules) ──────────────
@@ -159,10 +159,6 @@ type MerchantAlias = {
   merchant: string;
   category: TransactionCategory;
 };
-
-/** Exact-merchant matches outrank every generic keyword rule: knowing WHO
- *  the merchant is beats inferring from a keyword. */
-const ALIAS_WEIGHT = 0.96;
 
 /**
  * Folds descriptor punctuation variants onto one canonical token stream so
@@ -217,32 +213,16 @@ const MERCHANT_ALIAS_RULES: MerchantAlias[] = [
 
 /** Ordered by specificity — first match wins. */
 const CATEGORY_RULES: CategoryRule[] = [
-  { pattern: /\b(PYRL|PAYROLL|DIRECT DEP|WORK.?STUDY)\b/, category: "income", weight: 0.97 },
-  { pattern: /\b(UBER EATS|DOORDASH|GRUBHUB)\b/, category: "food", weight: 0.94 },
-  { pattern: /\b(COFFEE|CAFE|GRILL|PIZZA|DINER|BAKERY|MASALA|ICE CREAM|BOBA|SUSHI|TACO|BURGER|DONUT)\b/, category: "food", weight: 0.91 },
-  { pattern: /\b(UTIL|DTE|ENERGY|WATER|COMCAST|XFINITY)\b/, category: "utilities", weight: 0.88 },
-  { pattern: /\b(SPEEDWAY|SHELL|EXXON|MARATHON|AAATA|LYFT|AMTRAK)\b/, category: "transport", weight: 0.9 },
-  { pattern: /\b(AMAZON|TARGET|WALMART|MARKETPLACE|MKTP)\b/, category: "shopping", weight: 0.92 },
-  { pattern: /\b(NETFLIX|SPOTIFY|HULU|STEAM|CINEMA|AMC)\b/, category: "entertainment", weight: 0.93 },
-  { pattern: /\b(RENT|LEASING|PROPERTY|APTS?)\b/, category: "rent", weight: 0.9 },
-  { pattern: /\b(TUITION|BURSAR|REGISTRAR)\b/, category: "tuition", weight: 0.95 },
+  { pattern: /\b(PYRL|PAYROLL|DIRECT DEP|WORK.?STUDY)\b/, category: "income" },
+  { pattern: /\b(UBER EATS|DOORDASH|GRUBHUB)\b/, category: "food" },
+  { pattern: /\b(COFFEE|CAFE|GRILL|PIZZA|DINER|BAKERY|MASALA|ICE CREAM|BOBA|SUSHI|TACO|BURGER|DONUT)\b/, category: "food" },
+  { pattern: /\b(UTIL|DTE|ENERGY|WATER|COMCAST|XFINITY)\b/, category: "utilities" },
+  { pattern: /\b(SPEEDWAY|SHELL|EXXON|MARATHON|AAATA|LYFT|AMTRAK)\b/, category: "transport" },
+  { pattern: /\b(AMAZON|TARGET|WALMART|MARKETPLACE|MKTP)\b/, category: "shopping" },
+  { pattern: /\b(NETFLIX|SPOTIFY|HULU|STEAM|CINEMA|AMC)\b/, category: "entertainment" },
+  { pattern: /\b(RENT|LEASING|PROPERTY|APTS?)\b/, category: "rent" },
+  { pattern: /\b(TUITION|BURSAR|REGISTRAR)\b/, category: "tuition" },
 ];
-
-/** Below this confidence a payload is parked in the review queue as "other". */
-export const REVIEW_QUEUE_THRESHOLD = 0.5;
-
-/**
- * Tiny deterministic jitter derived from the merchant string, so repeated
- * demo runs print stable-but-organic confidence values (never Math.random —
- * the log stream should be reproducible run to run).
- */
-function confidenceJitter(merchant: string): number {
-  let hash = 0;
-  for (let i = 0; i < merchant.length; i++) {
-    hash = (hash * 31 + merchant.charCodeAt(i)) % 1000;
-  }
-  return (hash % 50) / 1000; // 0.000 .. 0.049
-}
 
 export function classifyMerchant(merchant: string): ClassifyResult {
   const haystack = merchant.toUpperCase();
@@ -251,11 +231,7 @@ export function classifyMerchant(merchant: string): ClassifyResult {
   const normalized = normalizeForAliases(merchant);
   for (const alias of MERCHANT_ALIAS_RULES) {
     if (alias.pattern.test(normalized)) {
-      const confidence = Math.min(
-        0.99,
-        ALIAS_WEIGHT - confidenceJitter(merchant)
-      );
-      return { category: alias.category, confidence, matchedToken: alias.merchant };
+      return { category: alias.category, match: "alias", matchedToken: alias.merchant };
     }
   }
 
@@ -263,20 +239,28 @@ export function classifyMerchant(merchant: string): ClassifyResult {
   for (const rule of CATEGORY_RULES) {
     const match = haystack.match(rule.pattern);
     if (match) {
-      const confidence = Math.min(
-        0.99,
-        rule.weight - confidenceJitter(merchant)
-      );
-      return { category: rule.category, confidence, matchedToken: match[0] };
+      return { category: rule.category, match: "keyword", matchedToken: match[0] };
     }
   }
 
   // No rule fired — park in the review queue rather than guess.
-  return {
-    category: "other",
-    confidence: 0.35 + confidenceJitter(merchant),
-    matchedToken: null,
-  };
+  return { category: "other", match: "none", matchedToken: null };
+}
+
+/**
+ * Human-readable explanation of a classification decision. Rule tiers are
+ * named for what they ARE (an exact merchant table hit, a keyword rule)
+ * instead of dressing heuristic weights up as statistical probabilities.
+ */
+export function matchLabel(result: Pick<ClassifyResult, "match" | "matchedToken">): string {
+  switch (result.match) {
+    case "alias":
+      return `Exact merchant match: ${result.matchedToken}`;
+    case "keyword":
+      return `Keyword match: ${result.matchedToken}`;
+    case "none":
+      return "Needs review";
+  }
 }
 
 // ── Demo payload batch ────────────────────────────────────────────────────────

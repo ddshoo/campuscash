@@ -4,7 +4,7 @@ import { useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useDevLog } from "@/store/useDevLog";
-import { classifyMerchant } from "@/lib/demo/categorizer";
+import { classifyMerchant, matchLabel } from "@/lib/demo/categorizer";
 import type { Transaction, TransactionCategory } from "@/types";
 
 const CATEGORIES: TransactionCategory[] = [
@@ -77,19 +77,20 @@ export default function ManualOverrides() {
     if (category === "auto") {
       const verdict = classifyMerchant(description);
       // Mirror the pipeline's contract: machine-categorized entries carry
-      // status + confidence so the engineering view shows the % match.
+      // status + match trail so the engineering view can explain the call.
       tx.category = verdict.category;
       tx.status = "categorized";
-      tx.confidence = verdict.confidence;
+      tx.match = verdict.match;
+      tx.matchedToken = verdict.matchedToken;
       log(
-        verdict.matchedToken ? "success" : "warn",
+        verdict.match !== "none" ? "success" : "warn",
         "Categorizer",
-        verdict.matchedToken
-          ? `"${description}" → ${verdict.category} (token "${verdict.matchedToken}", ${Math.round(verdict.confidence * 100)}%)`
-          : `"${description}" → no rule matched · review queue as "other" (${Math.round(verdict.confidence * 100)}%)`
+        verdict.match !== "none"
+          ? `"${description}" → ${verdict.category} · ${matchLabel(verdict)}`
+          : `"${description}" → no rule matched · review queue as "other"`
       );
     } else {
-      tx.category = category; // hand-picked — trusted, no status/confidence
+      tx.category = category; // hand-picked — trusted, no status/match trail
     }
 
     // ingestTransactions also reconciles the balance, same as the pipeline

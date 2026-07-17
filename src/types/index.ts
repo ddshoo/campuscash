@@ -15,6 +15,12 @@ export type TransactionCategory =
  *  status — absence means "categorized by hand, trusted". */
 export type TransactionStatus = "raw" | "processing" | "categorized";
 
+/** How the rule-based classifier decided a category:
+ *  "alias" — a known-merchant entry fired (exact merchant match);
+ *  "keyword" — a generic category keyword rule fired;
+ *  "none" — nothing matched confidently → review queue. */
+export type MatchKind = "alias" | "keyword" | "none";
+
 export type Transaction = {
   id: string;
   date: string;
@@ -25,8 +31,10 @@ export type Transaction = {
   status?: TransactionStatus;
   /** Original processor descriptor, kept for auditability after cleaning. */
   rawDescriptor?: string;
-  /** Classifier confidence 0..1 — only set once status is "categorized". */
-  confidence?: number;
+  /** How the classifier decided — only set once status is "categorized". */
+  match?: MatchKind;
+  /** The alias or keyword token that fired (null = review queue). */
+  matchedToken?: string | null;
 };
 
 export type UpcomingBill = {
@@ -49,7 +57,7 @@ export type PaymentArchitecture = "legacy" | "native";
 
 /** What the app surfaces about its own internals. "consumer" is exactly what
  *  a shipped user would see; "engineering" additionally exposes the agent
- *  pipeline trace and classifier confidence — the interview demo view. */
+ *  pipeline trace and classifier match labels — the interview demo view. */
 export type ViewMode = "consumer" | "engineering";
 
 export type CreditScoreEntry = {

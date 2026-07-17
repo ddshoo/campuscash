@@ -44,7 +44,8 @@ describe("updateTransaction", () => {
     useStore.getState().updateTransaction("a", {
       status: "categorized",
       category: "food",
-      confidence: 0.91,
+      match: "keyword",
+      matchedToken: "COFFEE",
       description: "Student Coffee",
     });
     const [first, second] = useStore.getState().transactions;
